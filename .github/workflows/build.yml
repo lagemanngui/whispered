@@ -30,6 +30,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Use CPU-only PyTorch (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pip uninstall -y torch torchvision torchaudio 2>/dev/null || true
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip list --format=freeze | grep -i '^nvidia-' | cut -d= -f1 | xargs -r pip uninstall -y
+
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -68,6 +75,19 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: pyinstaller build/whispered.spec --noconfirm
+
+      - name: Prune Linux bundle
+        if: runner.os == 'Linux'
+        run: |
+          ROOT="${{ github.workspace }}/dist/Whispered"
+          echo "Bundle size before prune:"
+          du -sh "$ROOT"
+          find "$ROOT" -type d -name nvidia -prune -exec rm -rf {} +
+          find "$ROOT" -name 'libtorch_cuda.so*' -delete
+          find "$ROOT" -name '*cudnn*' -delete
+          find "$ROOT" -path '*/torch/lib/libc10_cuda*' -delete
+          echo "Bundle size after prune:"
+          du -sh "$ROOT"
 
       - name: Upload artifact (macOS)
         if: runner.os == 'macOS'
@@ -118,7 +138,7 @@ jobs:
 
       - name: Zip Windows build
         run: |
-          (cd windows && zip -r "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-windows-x64.zip" .)
+          (cd windows && zip -9 -r "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-windows-x64.zip" .)
 
       - name: Zip macOS build
         run: |
@@ -138,11 +158,23 @@ jobs:
             exit 1
           fi
           PARENT="$(dirname "$APP")"
-          (cd "$PARENT" && zip -ry "$OUT" "$(basename "$APP")")
+          (cd "$PARENT" && zip -9 -ry "$OUT" "$(basename "$APP")")
 
       - name: Zip Linux build
         run: |
-          (cd linux && zip -r "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-linux-x64.zip" .)
+          (cd linux && zip -9 -r "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-linux-x64.zip" .)
+
+      - name: Verify release asset sizes
+        run: |
+          LIMIT=2147483648
+          for f in Whispered-*.zip; do
+            size=$(stat -c%s "$f")
+            echo "$f: $(numfmt --to=iec-i --suffix=B "$size")"
+            if [ "$size" -ge "$LIMIT" ]; then
+              echo "::error::$f ($size bytes) exceeds GitHub's 2 GiB per-asset limit"
+              exit 1
+            fi
+          done
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2

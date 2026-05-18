@@ -39,6 +39,21 @@ else:
     except ImportError:
         print("WARNING: imageio-ffmpeg not installed", file=sys.stderr)
 
+excludes = [
+    "torch.test",
+    "torch.testing",
+    "torch.utils.tensorboard",
+    "torch.distributed",
+    "matplotlib",
+    "scipy",
+    "PIL",
+    "IPython",
+    "notebook",
+    "tkinter",
+    "tensorflow",
+    "tensorboard",
+]
+
 hiddenimports = [
     "whisper",
     "whisper.audio",
@@ -72,7 +87,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -104,7 +119,7 @@ coll = COLLECT(
     a.binaries,
     a.zipfiles,
     a.datas,
-    strip=False,
+    strip=(system == "Linux"),
     upx=False,
     upx_exclude=[],
     name="Whispered",

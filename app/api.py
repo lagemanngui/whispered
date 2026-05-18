@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import threading
 import time
 from typing import Any
@@ -271,14 +272,27 @@ class Api:
             return {"ok": False, "error": "Transcript not found."}
         return {"ok": True}
 
-    def save_transcript(self, text: str, default_name: str = "transcript.txt") -> dict[str, Any]:
-        if not text:
+    _DEFAULT_FILE_TYPES = (
+        "HTML (*.html)",
+        "Markdown (*.md)",
+        "Text (*.txt)",
+        "All files (*.*)",
+    )
+
+    def save_file(
+        self,
+        content: str,
+        default_name: str = "transcript.txt",
+        file_types: list[str] | tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        if not content:
             return {"saved": False, "error": "Nothing to save."}
 
+        types = tuple(file_types) if file_types else self._DEFAULT_FILE_TYPES
         result = webview.windows[0].create_file_dialog(
             webview.SAVE_DIALOG,
             save_filename=default_name,
-            file_types=("Text files (*.txt)", "All files (*.*)"),
+            file_types=types,
         )
         if not result:
             return {"saved": False}
@@ -286,10 +300,50 @@ class Api:
         path = result if isinstance(result, str) else result[0]
         try:
             with open(path, "w", encoding="utf-8") as f:
-                f.write(text)
+                f.write(content)
             return {"saved": True, "path": path}
         except OSError as exc:
             return {"saved": False, "error": str(exc)}
+
+    def save_transcript(self, text: str, default_name: str = "transcript.txt") -> dict[str, Any]:
+        return self.save_file(
+            text,
+            default_name,
+            ("Text files (*.txt)", "All files (*.*)"),
+        )
+
+    _MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
+    def pick_image_file(self) -> str | None:
+        file_types = (
+            "Images (*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.svg)",
+            "All files (*.*)",
+        )
+        result = webview.windows[0].create_file_dialog(
+            webview.OPEN_DIALOG,
+            allow_multiple=False,
+            file_types=file_types,
+        )
+        if not result:
+            return None
+        return result[0] if isinstance(result, (list, tuple)) else result
+
+    def image_to_data_url(self, path: str) -> dict[str, Any]:
+        import base64
+        import mimetypes
+
+        try:
+            mime, _ = mimetypes.guess_type(path)
+            if not mime or not mime.startswith("image/"):
+                return {"error": "Not an image file."}
+            size = os.path.getsize(path)
+            if size > self._MAX_IMAGE_BYTES:
+                return {"error": "Image is too large (max 10 MB)."}
+            with open(path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("ascii")
+            return {"data_url": f"data:{mime};base64,{encoded}"}
+        except OSError as exc:
+            return {"error": str(exc)}
 
     def copy_to_clipboard(self, text: str) -> dict[str, bool]:
         if not text:

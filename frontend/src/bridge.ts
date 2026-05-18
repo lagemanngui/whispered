@@ -49,6 +49,20 @@ export async function pickAudioFile(): Promise<string | null> {
   return api().pick_audio_file();
 }
 
+export async function pickImageFile(): Promise<string | null> {
+  return api().pick_image_file();
+}
+
+export async function imageToDataUrl(
+  path: string,
+): Promise<{ dataUrl: string | null; error?: string }> {
+  const result = await api().image_to_data_url(path);
+  if (result.error) {
+    return { dataUrl: null, error: result.error };
+  }
+  return { dataUrl: result.data_url ?? null };
+}
+
 export async function getAudioInfo(
   path: string,
 ): Promise<AudioInfo | null> {
@@ -145,6 +159,14 @@ export async function deleteHistory(id: string): Promise<void> {
   if (!result.ok) {
     throw new Error(result.error ?? "Failed to delete transcript.");
   }
+}
+
+export async function saveFile(
+  content: string,
+  defaultName?: string,
+  fileTypes?: string[],
+): Promise<{ saved: boolean; path?: string; error?: string }> {
+  return api().save_file(content, defaultName, fileTypes);
 }
 
 export async function saveTranscript(

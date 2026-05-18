@@ -4,6 +4,7 @@ import {
   AudioLines,
   Copy,
   Download,
+  FilePen,
   Loader2,
   Mic,
   Save,
@@ -12,6 +13,8 @@ import {
 } from "lucide-react";
 import type { HistoryEntry, JobPhase, ModelInfo } from "./pywebview";
 import { HistoryPanel } from "@/components/HistoryPanel";
+import { TranscriptEditor } from "@/components/TranscriptEditor";
+import { defaultTranscriptBaseName } from "@/lib/transcriptContent";
 import {
   copyToClipboard,
   createHistory,
@@ -176,6 +179,10 @@ export default function App() {
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HistoryEntry | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editorSource, setEditorSource] = useState<{
+    plainText: string;
+    defaultBaseName: string;
+  } | null>(null);
   const transcriptRef = useRef<HTMLTextAreaElement>(null);
   const savedTitleRef = useRef("");
 
@@ -512,18 +519,27 @@ export default function App() {
     if (!ok) setError("Could not copy to clipboard.");
   }, [transcript]);
 
+  const transcriptBaseName = useMemo(
+    () => defaultTranscriptBaseName(audioPath, title, fileName),
+    [audioPath, title],
+  );
+
+  const handleOpenEditor = useCallback(() => {
+    if (!transcript.trim()) return;
+    setEditorSource({
+      plainText: transcript,
+      defaultBaseName: transcriptBaseName,
+    });
+  }, [transcript, transcriptBaseName]);
+
   const handleExportFile = useCallback(async () => {
     if (!transcript) return;
-    const defaultName = audioPath
-      ? `${fileName(audioPath).replace(/\.[^.]+$/, "")}.txt`
-      : title.trim()
-        ? `${title.trim().replace(/[^\w.-]+/g, "_")}.txt`
-        : "transcript.txt";
+    const defaultName = `${transcriptBaseName}.txt`;
     const result = await saveTranscript(transcript, defaultName);
     if (!result.saved && result.error) {
       setError(result.error);
     }
-  }, [transcript, audioPath, title]);
+  }, [transcript, transcriptBaseName]);
 
   if (!ready) {
     return (
@@ -597,7 +613,7 @@ export default function App() {
               disabled={busy}
             >
               <Settings />
-              Settings
+              Model Settings
             </Button>
 
             <Button
@@ -769,6 +785,15 @@ export default function App() {
               Copy
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenEditor}
+              disabled={!transcript.trim() || busy}
+            >
+              <FilePen />
+              Open in editor
+            </Button>
+            <Button
               variant="default"
               size="sm"
               onClick={handleExportFile}
@@ -885,6 +910,15 @@ export default function App() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {editorSource && (
+        <TranscriptEditor
+          plainText={editorSource.plainText}
+          defaultBaseName={editorSource.defaultBaseName}
+          onClose={() => setEditorSource(null)}
+          onError={(message) => setError(message)}
+        />
+      )}
 
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>

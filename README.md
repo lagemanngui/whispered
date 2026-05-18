@@ -33,7 +33,7 @@ Built as a portfolio-grade desktop stack: **React + TypeScript** on the surface,
 | **Tasks** | Transcribe in the source language, or **translate to English** (model-dependent) |
 | **Live progress** | Phase labels, percent, and growing partial transcript while decoding |
 | **History** | SQLite-backed sidebar — reopen, rename, and delete past transcripts |
-| **Export** | Copy to clipboard or save as `.txt` via native save dialog |
+| **Export** | Copy to clipboard, save as `.txt`, or open in a full rich-text editor (formatting, task lists, images, links; save as HTML / Markdown / plain text) |
 | **Packaging** | CI builds `.app` (macOS), `.exe` (Windows), and Linux folder; no end-user Python install |
 
 ## Download

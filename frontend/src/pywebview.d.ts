@@ -66,6 +66,8 @@ export interface PyWebViewApi {
   get_ffmpeg_status(): Promise<{ bundled: boolean; path: string | null }>;
   get_audio_info(path: string): Promise<AudioInfo | { error: string }>;
   pick_audio_file(): Promise<string | null>;
+  pick_image_file(): Promise<string | null>;
+  image_to_data_url(path: string): Promise<{ data_url?: string; error?: string }>;
   transcribe(
     path: string,
     model: string,
@@ -101,6 +103,15 @@ export interface PyWebViewApi {
     transcribe_duration_ms?: number | null,
   ): Promise<{ ok: boolean; entry?: HistoryEntry; error?: string }>;
   delete_history(id: string): Promise<{ ok: boolean; error?: string }>;
+  save_file(
+    content: string,
+    default_name?: string,
+    file_types?: string[],
+  ): Promise<{
+    saved: boolean;
+    path?: string;
+    error?: string;
+  }>;
   save_transcript(text: string, default_name?: string): Promise<{
     saved: boolean;
     path?: string;

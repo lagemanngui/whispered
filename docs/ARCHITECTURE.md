@@ -45,7 +45,7 @@ The `Api` class is exposed to JavaScript as `window.pywebview.api`. Responsibili
 | Area | Methods (examples) | Notes |
 |------|-------------------|--------|
 | Models & config | `get_models`, `get_languages`, `get_ffmpeg_status` | Model metadata from `whisper_service` |
-| Files | `pick_audio_file`, `get_audio_info`, `save_transcript` | Native dialogs via PyWebView |
+| Files | `pick_audio_file`, `get_audio_info`, `save_file`, `save_transcript` | Native dialogs via PyWebView; `save_file` supports HTML, Markdown, and text |
 | Jobs | `transcribe`, `get_job_status`, `reset_job` | Background thread; UI polls status |
 | History | `list_history`, `create_history`, `update_history`, `delete_history` | SQLite-backed transcripts |
 | Clipboard | `copy_to_clipboard` | OS clipboard integration |

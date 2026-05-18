@@ -15,7 +15,7 @@ python3 -m venv .venv
 # shellcheck disable=SC1091
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install 'pywebview[gtk]' PyGObject pycairo pyinstaller
+pip install 'pywebview[gtk]' pyinstaller
 
 export PYTHONPATH="$ROOT"
 pyinstaller build/whispered.spec --noconfirm

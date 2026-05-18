@@ -38,6 +38,7 @@ def main() -> None:
         width=960,
         height=720,
         min_size=(640, 480),
+        maximized=True,
     )
 
     webview.start(debug=False)

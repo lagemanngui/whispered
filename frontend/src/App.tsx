@@ -7,6 +7,7 @@ import {
   Loader2,
   Mic,
   Save,
+  Settings,
   Trash2,
 } from "lucide-react";
 import type { HistoryEntry, JobPhase, ModelInfo } from "./pywebview";
@@ -140,6 +141,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [statusLine, setStatusLine] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HistoryEntry | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const transcriptRef = useRef<HTMLTextAreaElement>(null);
   const savedTitleRef = useRef("");
 
@@ -479,75 +481,15 @@ export default function App() {
               </CardContent>
             </Card>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="model">Model</Label>
-                <Select
-                  value={model}
-                  onValueChange={setModel}
-                  disabled={busy}
-                >
-                  <SelectTrigger id="model" className="w-full">
-                    <SelectValue placeholder="Select model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {models.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select
-                  value={language}
-                  onValueChange={setLanguage}
-                  disabled={busy}
-                >
-                  <SelectTrigger id="language" className="w-full">
-                    <SelectValue placeholder="Language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languages.map((lang) => (
-                      <SelectItem key={lang} value={lang}>
-                        {lang === "auto" ? "Auto-detect" : lang}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="task">Task</Label>
-                <Select
-                  value={task}
-                  onValueChange={(v) =>
-                    setTask(v as "transcribe" | "translate")
-                  }
-                  disabled={busy || translateDisabled}
-                >
-                  <SelectTrigger id="task" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="transcribe">Transcribe</SelectItem>
-                    <SelectItem value="translate">Translate to English</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {translateDisabled && (
-              <Alert>
-                <AlertDescription className="text-xs">
-                  Translation requires medium or large. Turbo and .en models
-                  only transcribe.
-                </AlertDescription>
-              </Alert>
-            )}
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setSettingsOpen(true)}
+              disabled={busy}
+            >
+              <Settings />
+              Settings
+            </Button>
 
             <Button
               className="w-full"
@@ -739,6 +681,91 @@ export default function App() {
           )}
         </div>
       </main>
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Transcription settings</DialogTitle>
+            <DialogDescription>
+              Model, language, and task for the next transcription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="settings-model">Model</Label>
+              <Select
+                value={model}
+                onValueChange={setModel}
+                disabled={busy}
+              >
+                <SelectTrigger id="settings-model" className="w-full">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="settings-language">Language</Label>
+              <Select
+                value={language}
+                onValueChange={setLanguage}
+                disabled={busy}
+              >
+                <SelectTrigger id="settings-language" className="w-full">
+                  <SelectValue placeholder="Language" />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  {languages.map((lang) => (
+                    <SelectItem key={lang} value={lang}>
+                      {lang === "auto" ? "Auto-detect" : lang}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="settings-task">Task</Label>
+              <Select
+                value={task}
+                onValueChange={(v) =>
+                  setTask(v as "transcribe" | "translate")
+                }
+                disabled={busy || translateDisabled}
+              >
+                <SelectTrigger id="settings-task" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="z-[100]">
+                  <SelectItem value="transcribe">Transcribe</SelectItem>
+                  <SelectItem value="translate">
+                    Translate to English
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {translateDisabled && (
+              <Alert>
+                <AlertDescription className="text-xs">
+                  Translation requires medium or large. Turbo and .en models
+                  only transcribe.
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setSettingsOpen(false)}>Done</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent>

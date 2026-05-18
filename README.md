@@ -78,5 +78,4 @@ The React UI calls Python through PyWebView’s `js_api` (`window.pywebview.api.
 ## License
 
 MIT. Whisper and model weights are [MIT licensed](https://github.com/openai/whisper/blob/main/LICENSE). ffmpeg builds from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) (GPL).
-# whispered
-# whispered
+

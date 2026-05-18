@@ -67,4 +67,7 @@ echo "$CURRENT -> $NEW_TAG"
 git tag -a "$NEW_TAG" -m "Release $NEW_TAG"
 git push origin "$NEW_TAG"
 printf '%s\n' "$NEW_TAG" > "$TAG_FILE"
-echo "pushed $NEW_TAG (recorded in .release-tag)"
+git add "$TAG_FILE"
+git commit -m "chore: record release $NEW_TAG in .release-tag" -- "$TAG_FILE"
+git push origin HEAD
+echo "pushed $NEW_TAG and updated .release-tag on $(git branch --show-current)"

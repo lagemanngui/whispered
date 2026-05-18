@@ -74,7 +74,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Whispered-macos
-          path: dist/Whispered.app
+          path: dist/
           if-no-files-found: error
 
       - name: Upload artifact (Windows)
@@ -122,7 +122,23 @@ jobs:
 
       - name: Zip macOS build
         run: |
-          (cd macos && zip -ry "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-macos-arm64.zip" Whispered.app)
+          OUT="$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-macos-arm64.zip"
+          APP="$(find macos -maxdepth 4 -name 'Whispered.app' -type d | head -1)"
+          if [ -z "$APP" ] && [ -d macos/Contents ]; then
+            mkdir -p _pkg/Whispered.app
+            shopt -s dotglob
+            for f in macos/*; do
+              [ "$f" != "_pkg" ] && mv "$f" _pkg/Whispered.app/
+            done
+            APP="_pkg/Whispered.app"
+          fi
+          if [ -z "$APP" ]; then
+            echo "Whispered.app not found in macOS artifact"
+            find macos | head -50
+            exit 1
+          fi
+          PARENT="$(dirname "$APP")"
+          (cd "$PARENT" && zip -ry "$OUT" "$(basename "$APP")")
 
       - name: Zip Linux build
         run: |

@@ -80,9 +80,9 @@ Model weights download on first use to the standard Whisper cache (`~/.cache/whi
 
 GitHub Actions (`.github/workflows/build.yml`):
 
-- Matrix build on **macOS** and **Windows**
+- Matrix build on **macOS**, **Windows**, and **Linux**
 - Fetches ffmpeg, builds frontend, runs PyInstaller
-- Uploads platform artifacts; tagged pushes (`v*`) publish a Windows zip to GitHub Releases
+- Uploads platform artifacts; tagged pushes (`v*`) publish Windows, macOS, and Linux zips to GitHub Releases
 
 Expect **large artifacts** (~1–2 GB) because PyTorch ships with the bundle.
 

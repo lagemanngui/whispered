@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -30,9 +30,23 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Fetch ffmpeg (macOS)
-        if: runner.os == 'macOS'
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            python3-gi \
+            python3-gi-cairo \
+            gir1.2-gtk-3.0 \
+            gir1.2-webkit2-4.1
+
+      - name: Fetch ffmpeg (macOS / Linux)
+        if: runner.os != 'Windows'
         run: bash scripts/fetch-ffmpeg.sh
+
+      - name: Install pywebview GTK (Linux)
+        if: runner.os == 'Linux'
+        run: pip install 'pywebview[gtk]' PyGObject pycairo
 
       - name: Fetch ffmpeg (Windows)
         if: runner.os == 'Windows'
@@ -66,6 +80,14 @@ jobs:
           path: dist/Whispered
           if-no-files-found: error
 
+      - name: Upload artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Whispered-linux
+          path: dist/Whispered
+          if-no-files-found: error
+
   release:
     needs: build
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -79,12 +101,33 @@ jobs:
           name: Whispered-windows
           path: windows
 
+      - uses: actions/download-artifact@v4
+        with:
+          name: Whispered-macos
+          path: macos
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Whispered-linux
+          path: linux
+
       - name: Zip Windows build
         run: |
           (cd windows && zip -r "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-windows-x64.zip" .)
 
+      - name: Zip macOS build
+        run: |
+          (cd macos && zip -ry "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-macos-arm64.zip" Whispered.app)
+
+      - name: Zip Linux build
+        run: |
+          (cd linux && zip -r "$GITHUB_WORKSPACE/Whispered-${{ github.ref_name }}-linux-x64.zip" .)
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          files: Whispered-${{ github.ref_name }}-windows-x64.zip
+          files: |
+            Whispered-${{ github.ref_name }}-windows-x64.zip
+            Whispered-${{ github.ref_name }}-macos-arm64.zip
+            Whispered-${{ github.ref_name }}-linux-x64.zip
           generate_release_notes: true

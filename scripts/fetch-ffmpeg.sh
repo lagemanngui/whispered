@@ -6,15 +6,21 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
-if [[ "$OS" != "Darwin" ]]; then
+if [[ "$OS" == "Darwin" ]]; then
+  if [[ "$ARCH" == "arm64" ]]; then
+    PLATFORM="mac-arm64"
+  else
+    PLATFORM="mac-x64"
+  fi
+elif [[ "$OS" == "Linux" ]]; then
+  if [[ "$ARCH" == "aarch64" || "$ARCH" == "arm64" ]]; then
+    PLATFORM="linux-arm64"
+  else
+    PLATFORM="linux-x64"
+  fi
+else
   echo "On Windows run: powershell -File scripts/fetch-ffmpeg.ps1"
   exit 1
-fi
-
-if [[ "$ARCH" == "arm64" ]]; then
-  PLATFORM="mac-arm64"
-else
-  PLATFORM="mac-x64"
 fi
 
 OUT="$ROOT/vendor/ffmpeg/$PLATFORM/ffmpeg"

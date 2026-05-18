@@ -13,6 +13,8 @@ if system == "Darwin":
     ffmpeg_plat = "mac-arm64" if machine in ("arm64", "aarch64") else "mac-x64"
 elif system == "Windows":
     ffmpeg_plat = "win64"
+elif machine in ("arm64", "aarch64"):
+    ffmpeg_plat = "linux-arm64"
 else:
     ffmpeg_plat = "linux-x64"
 

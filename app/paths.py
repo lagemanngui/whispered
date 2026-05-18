@@ -33,6 +33,8 @@ def _ffmpeg_platform_dir() -> str:
         return "mac-x64"
     if system == "Windows":
         return "win64"
+    if machine in ("arm64", "aarch64"):
+        return "linux-arm64"
     return "linux-x64"
 
 

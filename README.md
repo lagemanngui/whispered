@@ -18,7 +18,7 @@ Most Whisper tools are either CLI-only or cloud-backed web apps. Whispered targe
 
 - **Private by default** — audio never leaves your machine
 - **Polished UI** — pick a file, choose a model, edit and save the transcript
-- **Shippable** — PyInstaller bundles Python, PyTorch, ffmpeg, and the UI for macOS and Windows
+- **Shippable** — PyInstaller bundles Python, PyTorch, ffmpeg, and the UI for macOS, Windows, and Linux
 - **Thoughtful UX** — live partial text while transcribing, transcript history, copy/export in one click
 
 Built as a portfolio-grade desktop stack: **React + TypeScript** on the surface, **Python + Whisper** underneath, connected through **PyWebView**’s `js_api` bridge.
@@ -34,7 +34,7 @@ Built as a portfolio-grade desktop stack: **React + TypeScript** on the surface,
 | **Live progress** | Phase labels, percent, and growing partial transcript while decoding |
 | **History** | SQLite-backed sidebar — reopen, rename, and delete past transcripts |
 | **Export** | Copy to clipboard or save as `.txt` via native save dialog |
-| **Packaging** | CI builds `.app` (macOS) and `.exe` (Windows); no end-user Python install |
+| **Packaging** | CI builds `.app` (macOS), `.exe` (Windows), and Linux folder; no end-user Python install |
 
 ## Download
 
@@ -42,8 +42,9 @@ Pre-built binaries are attached to [GitHub Releases](https://github.com/lagemann
 
 | Platform | Artifact |
 |----------|----------|
-| macOS | `Whispered.app` (from CI artifact or release) |
-| Windows | `Whispered.exe` inside `Whispered/` (zipped on release) |
+| macOS | `Whispered.app` in `Whispered-<tag>-macos-arm64.zip` |
+| Windows | `Whispered.exe` in `Whispered-<tag>-windows-x64.zip` |
+| Linux | `Whispered` binary in `Whispered-<tag>-linux-x64.zip` (requires GTK 3 and WebKit2 4.1 on the system) |
 
 First run downloads the selected Whisper model weights to `~/.cache/whisper`. Bundled installers are large (**~1–2 GB**) because they include PyTorch.
 
@@ -65,7 +66,7 @@ This fetches ffmpeg if needed, builds the frontend, creates a venv, installs Pyt
 
 ```bash
 # 1. Bundled ffmpeg
-./scripts/fetch-ffmpeg.sh          # macOS
+./scripts/fetch-ffmpeg.sh          # macOS / Linux
 # powershell -File scripts/fetch-ffmpeg.ps1   # Windows
 
 # 2. Frontend
@@ -96,6 +97,13 @@ python run.py
 ```powershell
 .\scripts\package-win.ps1
 # → dist\Whispered\Whispered.exe
+```
+
+**Linux**
+
+```bash
+./scripts/package-linux.sh
+# → dist/Whispered/Whispered
 ```
 
 Build on the OS you are targeting. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how PyInstaller and bundled assets are laid out.

@@ -13,7 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -107,7 +106,7 @@ export function TranscriptEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-background"
+      className="fixed inset-0 z-50 flex min-h-0 flex-col overflow-hidden bg-background"
       role="dialog"
       aria-label="Transcript editor"
     >
@@ -149,11 +148,11 @@ export function TranscriptEditor({
 
       <EditorToolbar editor={editor} onError={onError} />
 
-      <ScrollArea className="flex-1">
+      <div className="transcript-editor-pane min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl p-4">
           <EditorContent editor={editor} />
         </div>
-      </ScrollArea>
+      </div>
 
       <Dialog open={discardOpen} onOpenChange={setDiscardOpen}>
         <DialogContent>

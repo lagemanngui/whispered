@@ -80,6 +80,35 @@
   }
 }
 
+.transcript-editor-pane {
+  -webkit-overflow-scrolling: touch;
+}
+
+.transcript-editor-pane .tiptap,
+.transcript-editor-pane .ProseMirror,
+.transcript-editor-content {
+  cursor: text;
+  caret-color: var(--foreground);
+  user-select: text;
+}
+
+.transcript-editor-pane .ProseMirror a {
+  cursor: pointer;
+}
+
+.transcript-editor-pane .ProseMirror ul[data-type="taskList"] li > label {
+  cursor: pointer;
+}
+
+.transcript-editor-pane .ProseMirror img {
+  cursor: default;
+}
+
+.transcript-editor-pane .ProseMirror pre,
+.transcript-editor-pane .ProseMirror pre code {
+  cursor: text;
+}
+
 .transcript-editor-content {
   color: var(--foreground);
 }

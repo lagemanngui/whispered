@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.DS_Store
+frontend/node_modules/
+frontend/dist/
+build/dist/
+build/build/
+vendor/ffmpeg/mac-*/
+vendor/ffmpeg/win64/
+*.spec.bak
+dist/
+build/
+vendor/

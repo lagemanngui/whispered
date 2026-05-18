@@ -8,6 +8,8 @@ Transcribe and translate audio with [OpenAI Whisper](https://github.com/openai/w
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%E2%80%93%203.12-3776ab)](https://www.python.org/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
 
+![Whispered main window](docs/images/screenshot.png)
+
 ---
 
 ## Why Whispered?
@@ -33,13 +35,6 @@ Built as a portfolio-grade desktop stack: **React + TypeScript** on the surface,
 | **History** | SQLite-backed sidebar — reopen, rename, and delete past transcripts |
 | **Export** | Copy to clipboard or save as `.txt` via native save dialog |
 | **Packaging** | CI builds `.app` (macOS) and `.exe` (Windows); no end-user Python install |
-
-## Screenshots
-
-<!-- Add 2–3 screenshots under docs/images/ and link them here for maximum portfolio impact -->
-<!-- Example: ![Transcribing an interview](docs/images/transcribe.png) -->
-
-> **Tip for maintainers:** Drop PNGs into `docs/images/` and uncomment the lines above before your first public release.
 
 ## Download
 

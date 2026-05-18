@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import threading
+import time
 from typing import Any
 
 import webview
 
-from app import history_store, paths, whisper_service
+from app import audio_info, history_store, paths, whisper_service
 
 _job_lock = threading.Lock()
 _job_state: dict[str, Any] = {
@@ -36,6 +37,10 @@ def _history_from_result(
     model: str,
     language: str,
     task: str,
+    *,
+    audio_duration_sec: float | None = None,
+    audio_size_bytes: int | None = None,
+    transcribe_duration_ms: int | None = None,
 ) -> dict:
     return history_store.create_transcript(
         title=_history_title(audio_path),
@@ -46,6 +51,9 @@ def _history_from_result(
         task=task,
         detected_language=result.get("language"),
         segments=result.get("segments"),
+        audio_duration_sec=audio_duration_sec,
+        audio_size_bytes=audio_size_bytes,
+        transcribe_duration_ms=transcribe_duration_ms,
     )
 
 
@@ -71,6 +79,12 @@ class Api:
             "bundled": binary is not None,
             "path": str(binary) if binary else None,
         }
+
+    def get_audio_info(self, path: str) -> dict[str, Any]:
+        try:
+            return audio_info.get_audio_info(path)
+        except OSError as exc:
+            return {"error": str(exc)}
 
     def pick_audio_file(self) -> str | None:
         file_types = (
@@ -122,6 +136,12 @@ class Api:
 
         def run() -> None:
             whisper_service.set_progress_callback(_on_progress)
+            started = time.perf_counter()
+            file_meta: dict[str, Any] = {}
+            try:
+                file_meta = audio_info.get_audio_info(path)
+            except OSError:
+                file_meta = {}
             try:
                 result = whisper_service.transcribe(
                     path,
@@ -129,8 +149,16 @@ class Api:
                     language=lang,
                     task=task,
                 )
+                elapsed_ms = int((time.perf_counter() - started) * 1000)
                 history_entry = _history_from_result(
-                    result, path, model, lang or language, task
+                    result,
+                    path,
+                    model,
+                    lang or language,
+                    task,
+                    audio_duration_sec=file_meta.get("duration_sec"),
+                    audio_size_bytes=file_meta.get("size_bytes"),
+                    transcribe_duration_ms=elapsed_ms,
                 )
                 with _job_lock:
                     _job_state["status"] = "done"
@@ -184,6 +212,9 @@ class Api:
         language: str | None = None,
         task: str | None = None,
         detected_language: str | None = None,
+        audio_duration_sec: float | None = None,
+        audio_size_bytes: int | None = None,
+        transcribe_duration_ms: int | None = None,
     ) -> dict[str, Any]:
         if not title.strip():
             title = "Untitled transcript"
@@ -195,6 +226,9 @@ class Api:
             language=language,
             task=task,
             detected_language=detected_language,
+            audio_duration_sec=audio_duration_sec,
+            audio_size_bytes=audio_size_bytes,
+            transcribe_duration_ms=transcribe_duration_ms,
         )
 
     def update_history(
@@ -207,6 +241,9 @@ class Api:
         language: str | None = None,
         task: str | None = None,
         detected_language: str | None = None,
+        audio_duration_sec: float | None = None,
+        audio_size_bytes: int | None = None,
+        transcribe_duration_ms: int | None = None,
     ) -> dict[str, Any]:
         clean_title = None
         if title is not None:
@@ -220,6 +257,9 @@ class Api:
             language=language,
             task=task,
             detected_language=detected_language,
+            audio_duration_sec=audio_duration_sec,
+            audio_size_bytes=audio_size_bytes,
+            transcribe_duration_ms=transcribe_duration_ms,
         )
         if updated is None:
             return {"ok": False, "error": "Transcript not found."}

@@ -1,4 +1,10 @@
-import type { HistoryEntry, JobStatus, ModelInfo, PyWebViewApi } from "./pywebview";
+import type {
+  AudioInfo,
+  HistoryEntry,
+  JobStatus,
+  ModelInfo,
+  PyWebViewApi,
+} from "./pywebview";
 
 function api(): PyWebViewApi {
   if (!window.pywebview?.api) {
@@ -43,6 +49,14 @@ export async function pickAudioFile(): Promise<string | null> {
   return api().pick_audio_file();
 }
 
+export async function getAudioInfo(
+  path: string,
+): Promise<AudioInfo | null> {
+  const result = await api().get_audio_info(path);
+  if ("error" in result) return null;
+  return result;
+}
+
 export async function startTranscribe(
   path: string,
   model: string,
@@ -73,6 +87,9 @@ export async function createHistory(
     language?: string | null;
     task?: string | null;
     detected_language?: string | null;
+    audio_duration_sec?: number | null;
+    audio_size_bytes?: number | null;
+    transcribe_duration_ms?: number | null;
   },
 ): Promise<HistoryEntry> {
   return api().create_history(
@@ -83,6 +100,9 @@ export async function createHistory(
     meta?.language ?? null,
     meta?.task ?? null,
     meta?.detected_language ?? null,
+    meta?.audio_duration_sec ?? null,
+    meta?.audio_size_bytes ?? null,
+    meta?.transcribe_duration_ms ?? null,
   );
 }
 
@@ -96,6 +116,9 @@ export async function updateHistory(
     language?: string | null;
     task?: string | null;
     detected_language?: string | null;
+    audio_duration_sec?: number | null;
+    audio_size_bytes?: number | null;
+    transcribe_duration_ms?: number | null;
   },
 ): Promise<HistoryEntry> {
   const result = await api().update_history(
@@ -107,6 +130,9 @@ export async function updateHistory(
     fields.language ?? null,
     fields.task ?? null,
     fields.detected_language ?? null,
+    fields.audio_duration_sec ?? null,
+    fields.audio_size_bytes ?? null,
+    fields.transcribe_duration_ms ?? null,
   );
   if (!result.ok || !result.entry) {
     throw new Error(result.error ?? "Failed to update transcript.");

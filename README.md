@@ -1,38 +1,82 @@
 # Whispered
 
-Cross-platform desktop app for transcribing audio with [OpenAI Whisper](https://github.com/openai/whisper). Runs entirely offline in a single process — no local web server. Built with PyWebView, React, and PyInstaller.
+**Offline speech-to-text for your desktop.**  
+Transcribe and translate audio with [OpenAI Whisper](https://github.com/openai/whisper) — no account, no upload, no local web server. One native window, one process.
+
+[![Build](https://github.com/lagemanngui/whispered/actions/workflows/build.yml/badge.svg)](https://github.com/lagemanngui/whispered/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%20%E2%80%93%203.12-3776ab)](https://www.python.org/)
+[![React 19](https://img.shields.io/badge/React-19-61dafb)](https://react.dev/)
+
+---
+
+## Why Whispered?
+
+Most Whisper tools are either CLI-only or cloud-backed web apps. Whispered targets a different balance:
+
+- **Private by default** — audio never leaves your machine
+- **Polished UI** — pick a file, choose a model, edit and save the transcript
+- **Shippable** — PyInstaller bundles Python, PyTorch, ffmpeg, and the UI for macOS and Windows
+- **Thoughtful UX** — live partial text while transcribing, transcript history, copy/export in one click
+
+Built as a portfolio-grade desktop stack: **React + TypeScript** on the surface, **Python + Whisper** underneath, connected through **PyWebView**’s `js_api` bridge.
 
 ## Features
 
-- Native file picker for audio (mp3, wav, m4a, flac, ogg, and more via ffmpeg)
-- Model selection (tiny through large, turbo, English-only variants)
-- Auto-detect language or choose manually
-- Transcribe or translate to English (medium/large for translation)
-- Copy transcript or save as `.txt`
-- Bundled ffmpeg — end users do not install dependencies
+| Capability | Details |
+|------------|---------|
+| **Audio formats** | mp3, wav, m4a, flac, ogg, and more via bundled **ffmpeg** |
+| **Models** | tiny → large, turbo, and English-only variants |
+| **Languages** | Auto-detect or pick from a curated list |
+| **Tasks** | Transcribe in the source language, or **translate to English** (model-dependent) |
+| **Live progress** | Phase labels, percent, and growing partial transcript while decoding |
+| **History** | SQLite-backed sidebar — reopen, rename, and delete past transcripts |
+| **Export** | Copy to clipboard or save as `.txt` via native save dialog |
+| **Packaging** | CI builds `.app` (macOS) and `.exe` (Windows); no end-user Python install |
 
-## Requirements (developers)
+## Screenshots
 
-- Python 3.10–3.12
-- Node.js 20+
-- macOS or Windows for packaging (build on the target OS)
+<!-- Add 2–3 screenshots under docs/images/ and link them here for maximum portfolio impact -->
+<!-- Example: ![Transcribing an interview](docs/images/transcribe.png) -->
+
+> **Tip for maintainers:** Drop PNGs into `docs/images/` and uncomment the lines above before your first public release.
+
+## Download
+
+Pre-built binaries are attached to [GitHub Releases](https://github.com/lagemanngui/whispered/releases) when you push a version tag (`v0.1.0`, etc.).
+
+| Platform | Artifact |
+|----------|----------|
+| macOS | `Whispered.app` (from CI artifact or release) |
+| Windows | `Whispered.exe` inside `Whispered/` (zipped on release) |
+
+First run downloads the selected Whisper model weights to `~/.cache/whisper`. Bundled installers are large (**~1–2 GB**) because they include PyTorch.
 
 ## Quick start (development)
 
+**macOS** — one command:
+
 ```bash
-# macOS: fetch ffmpeg, build UI, run app
 chmod +x scripts/*.sh
 ./scripts/dev.sh
 ```
 
-Manual steps:
+This fetches ffmpeg if needed, builds the frontend, creates a venv, installs Python deps, and launches the app.
+
+<details>
+<summary><strong>Manual setup (all platforms)</strong></summary>
+
+**Requirements:** Python 3.10–3.12, Node.js 20+, macOS or Windows for packaging.
 
 ```bash
-./scripts/fetch-ffmpeg.sh          # macOS (copies ffmpeg from imageio-ffmpeg)
-# or: powershell -File scripts/fetch-ffmpeg.ps1   # Windows
+# 1. Bundled ffmpeg
+./scripts/fetch-ffmpeg.sh          # macOS
+# powershell -File scripts/fetch-ffmpeg.ps1   # Windows
 
+# 2. Frontend
 cd frontend && npm install && npm run build && cd ..
 
+# 3. Python
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
@@ -41,41 +85,83 @@ export PYTHONPATH="$(pwd)"         # Windows: set PYTHONPATH=%CD%
 python run.py
 ```
 
-On first transcription, Whisper downloads model weights to `~/.cache/whisper`.
+</details>
 
-## Package installers
+## Build installers locally
 
-**macOS:**
+**macOS**
 
 ```bash
 ./scripts/package-mac.sh
-# Output: dist/Whispered.app (inside dist/Whispered/)
+# → dist/Whispered.app
 ```
 
-**Windows:**
+**Windows**
 
 ```powershell
 .\scripts\package-win.ps1
-# Output: dist\Whispered\Whispered.exe
+# → dist\Whispered\Whispered.exe
 ```
 
-Expect large artifacts (~1–2 GB) because PyTorch is bundled.
-
-## Project layout
-
-```
-app/           Python: Whisper, PyWebView API bridge, launcher
-frontend/      React UI (static build, file:// loaded)
-vendor/ffmpeg/ Platform ffmpeg binaries (not in git)
-build/         PyInstaller spec
-scripts/       Dev and packaging helpers
-```
+Build on the OS you are targeting. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how PyInstaller and bundled assets are laid out.
 
 ## How it works
 
-The React UI calls Python through PyWebView’s `js_api` (`window.pywebview.api.*`). Transcription runs on a background thread. ffmpeg is bundled per platform and prepended to `PATH` before Whisper loads audio.
+```mermaid
+sequenceDiagram
+  participant UI as React UI
+  participant API as Python Api
+  participant W as Whisper
+  participant DB as SQLite
+
+  UI->>API: transcribe(path, model, language, task)
+  API->>API: background thread
+  loop poll
+    UI->>API: get_job_status()
+    API-->>UI: phase, percent, partial_text
+  end
+  W-->>API: result + segments
+  API->>DB: save history entry
+  API-->>UI: final transcript
+```
+
+The UI calls `window.pywebview.api.*` (see `frontend/src/bridge.ts`). Transcription runs off the main thread; ffmpeg is on `PATH` before Whisper decodes audio. Full design notes: **[Architecture →](docs/ARCHITECTURE.md)**
+
+## Project structure
+
+```
+app/                 Python: API bridge, Whisper wrapper, SQLite history
+frontend/            React + Vite UI (static build loaded from disk)
+vendor/ffmpeg/       Platform ffmpeg binaries (fetched, not in git)
+build/               PyInstaller spec
+scripts/             dev.sh, packaging, ffmpeg fetch
+docs/                Architecture and images
+.github/workflows/   Cross-platform CI and release uploads
+```
+
+## Tech stack
+
+- **[Whisper](https://github.com/openai/whisper)** — speech recognition
+- **[PyWebView](https://pywebview.flowrl.com/)** — native window + JS ↔ Python bridge
+- **[React](https://react.dev/)** + **[Vite](https://vitejs.dev/)** + **[Tailwind CSS](https://tailwindcss.com/)**
+- **[PyInstaller](https://pyinstaller.org/)** — distributable binaries
+- **SQLite** — local transcript history
+
+## Contributing
+
+Contributions are welcome. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, PR expectations, and bug report templates.
 
 ## License
 
-MIT. Whisper and model weights are [MIT licensed](https://github.com/openai/whisper/blob/main/LICENSE). ffmpeg builds from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) (GPL).
+This project is licensed under the **[MIT License](LICENSE)**.
 
+Third-party notes:
+
+- [OpenAI Whisper](https://github.com/openai/whisper) and model weights — MIT
+- ffmpeg builds from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) — GPL (bundled for decoding only; see upstream license for redistribution terms)
+
+## Author
+
+**Guilherme Dias** — [github.com/lagemanngui](https://github.com/lagemanngui)
+
+If Whispered is useful to you, a star on the repo helps others discover it.

@@ -1,5 +1,6 @@
 import { History, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import type { HistoryEntry } from "@/pywebview";
+import { formatDuration, formatElapsedMs } from "@/format";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -88,7 +89,13 @@ export function HistoryPanel({
                       {entry.title}
                     </p>
                     <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                      {formatWhen(entry.updated_at)}
+                      {[
+                        formatWhen(entry.updated_at),
+                        formatDuration(entry.audio_duration_sec),
+                        formatElapsedMs(entry.transcribe_duration_ms),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </button>
                   <DropdownMenu>

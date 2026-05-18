@@ -16,6 +16,7 @@ import {
   copyToClipboard,
   createHistory,
   deleteHistory,
+  getAudioInfo,
   getLanguages,
   getModels,
   listHistory,
@@ -26,6 +27,11 @@ import {
   updateHistory,
   waitForApi,
 } from "./bridge";
+import {
+  formatDuration,
+  formatElapsedMs,
+  formatFileSize,
+} from "./format";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,6 +92,34 @@ function phaseLabel(phase: JobPhase, busy: boolean): string {
   return phase;
 }
 
+type FileDetails = {
+  duration_sec: number | null;
+  size_bytes: number | null;
+  transcribe_ms: number | null;
+};
+
+function buildFileDetailParts(details: FileDetails | null): string[] {
+  if (!details) return [];
+  const parts: string[] = [];
+  const length = formatDuration(details.duration_sec);
+  const size = formatFileSize(details.size_bytes);
+  const transcribed = formatElapsedMs(details.transcribe_ms);
+  if (length) parts.push(length);
+  if (size) parts.push(size);
+  if (transcribed) parts.push(`Transcribed in ${transcribed}`);
+  return parts;
+}
+
+function buildStatusLine(entry: HistoryEntry): string | null {
+  const parts: string[] = [];
+  if (entry.detected_language) {
+    parts.push(`Detected: ${entry.detected_language}`);
+  }
+  const transcribed = formatElapsedMs(entry.transcribe_duration_ms);
+  if (transcribed) parts.push(`Transcribed in ${transcribed}`);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 function normalizeTitle(value: string): string {
   return value.trim() || "Untitled transcript";
 }
@@ -114,11 +148,7 @@ function applyEntryToEditor(
   if (entry.task === "translate" || entry.task === "transcribe") {
     setters.setTask(entry.task);
   }
-  setters.setStatusLine(
-    entry.detected_language
-      ? `Detected: ${entry.detected_language}`
-      : null,
-  );
+  setters.setStatusLine(buildStatusLine(entry));
 }
 
 export default function App() {
@@ -129,6 +159,10 @@ export default function App() {
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [audioPath, setAudioPath] = useState<string | null>(null);
+  const [audioMeta, setAudioMeta] = useState<{
+    duration_sec: number | null;
+    size_bytes: number;
+  } | null>(null);
   const [model, setModel] = useState("turbo");
   const [language, setLanguage] = useState("auto");
   const [task, setTask] = useState<"transcribe" | "translate">("transcribe");
@@ -158,6 +192,43 @@ export default function App() {
   const isDraft = activeHistoryId === null;
   const canEdit = !busy;
   const hasUnsavedDraft = isDraft && transcript.trim().length > 0;
+
+  const activeEntry = useMemo(
+    () =>
+      activeHistoryId
+        ? (history.find((h) => h.id === activeHistoryId) ?? null)
+        : null,
+    [history, activeHistoryId],
+  );
+
+  const fileDetails = useMemo((): FileDetails | null => {
+    if (
+      activeEntry &&
+      (activeEntry.audio_path ||
+        activeEntry.audio_duration_sec != null ||
+        activeEntry.audio_size_bytes != null ||
+        activeEntry.transcribe_duration_ms != null)
+    ) {
+      return {
+        duration_sec: activeEntry.audio_duration_sec,
+        size_bytes: activeEntry.audio_size_bytes,
+        transcribe_ms: activeEntry.transcribe_duration_ms,
+      };
+    }
+    if (audioPath && audioMeta) {
+      return {
+        duration_sec: audioMeta.duration_sec,
+        size_bytes: audioMeta.size_bytes,
+        transcribe_ms: null,
+      };
+    }
+    return null;
+  }, [activeEntry, audioPath, audioMeta]);
+
+  const fileDetailLine = useMemo(
+    () => buildFileDetailParts(fileDetails).join(" · "),
+    [fileDetails],
+  );
 
   const refreshHistory = useCallback(async () => {
     const entries = await listHistory();
@@ -219,25 +290,41 @@ export default function App() {
       .catch((err: Error) => setError(err.message));
   }, [refreshHistory]);
 
+  const loadAudioMeta = useCallback(async (path: string) => {
+    const info = await getAudioInfo(path);
+    if (info) {
+      setAudioMeta({
+        duration_sec: info.duration_sec,
+        size_bytes: info.size_bytes,
+      });
+    } else {
+      setAudioMeta(null);
+    }
+  }, []);
+
   const handlePickFile = useCallback(async () => {
     setError(null);
     try {
       const path = await pickAudioFile();
       if (path) {
         setAudioPath(path);
+        setAudioMeta(null);
         setActiveHistoryId(null);
         setTitle("");
         savedTitleRef.current = "";
         setTranscript("");
         setStatusLine(null);
+        await loadAudioMeta(path);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
-  }, []);
+  }, [loadAudioMeta]);
 
   const handleNewDraft = useCallback(() => {
     setActiveHistoryId(null);
+    setAudioPath(null);
+    setAudioMeta(null);
     setTitle("");
     savedTitleRef.current = "";
     setTranscript("");
@@ -265,10 +352,22 @@ export default function App() {
       if (activeHistoryId && activeHistoryId !== entry.id) {
         await commitTitle();
       }
+      setAudioMeta(null);
       applyEntryToEditor(entry, editorSetters, savedTitleRef);
       setError(null);
     },
     [activeHistoryId, commitTitle, editorSetters],
+  );
+
+  const fileMetaForSave = useCallback(
+    () =>
+      audioMeta
+        ? {
+            audio_duration_sec: audioMeta.duration_sec,
+            audio_size_bytes: audioMeta.size_bytes,
+          }
+        : {},
+    [audioMeta],
   );
 
   const handleSaveToHistory = useCallback(async () => {
@@ -286,6 +385,7 @@ export default function App() {
           model,
           language,
           task,
+          ...fileMetaForSave(),
         });
         await refreshHistory();
         applyEntryToEditor(entry, editorSetters, savedTitleRef);
@@ -298,6 +398,7 @@ export default function App() {
             model,
             language,
             task,
+            ...fileMetaForSave(),
           },
         );
         await refreshHistory();
@@ -316,6 +417,7 @@ export default function App() {
     task,
     refreshHistory,
     editorSetters,
+    fileMetaForSave,
   ]);
 
   const handleConfirmDelete = useCallback(async () => {
@@ -378,6 +480,7 @@ export default function App() {
         return;
       }
       if (job.history_entry) {
+        setAudioMeta(null);
         await refreshHistory();
         applyEntryToEditor(job.history_entry, editorSetters, savedTitleRef);
         if (userTitle) {
@@ -475,9 +578,15 @@ export default function App() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pt-2">
-                <p className="text-xs text-muted-foreground">
-                  mp3, wav, m4a, flac, ogg
-                </p>
+                {fileDetailLine ? (
+                  <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                    {fileDetailLine}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    mp3, wav, m4a, flac, ogg
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -580,13 +689,18 @@ export default function App() {
                 {busy
                   ? `Transcribing — ${formatElapsed(elapsedMs)} elapsed`
                   : isLive
-                  ? "Streaming segments as they decode"
-                  : isDraft
-                    ? hasUnsavedDraft
-                      ? "Draft — save to history when ready"
-                      : "Transcribe audio or create a new note"
-                    : "Saved in history"}
+                    ? "Streaming segments as they decode"
+                    : isDraft
+                      ? hasUnsavedDraft
+                        ? "Draft — save to history when ready"
+                        : "Transcribe audio or create a new note"
+                      : "Saved in history"}
               </p>
+              {fileDetailLine && !busy && (
+                <p className="font-mono text-xs tabular-nums text-muted-foreground">
+                  {fileDetailLine}
+                </p>
+              )}
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               {busy && (
@@ -609,6 +723,11 @@ export default function App() {
               )}
               {isDraft && hasUnsavedDraft && (
                 <Badge variant="secondary">Draft</Badge>
+              )}
+              {!busy && fileDetails?.transcribe_ms != null && (
+                <Badge variant="outline" className="font-mono tabular-nums">
+                  {formatElapsedMs(fileDetails.transcribe_ms)}
+                </Badge>
               )}
               <Badge variant="secondary" className="font-mono tabular-nums">
                 {words} words

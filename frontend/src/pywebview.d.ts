@@ -16,6 +16,15 @@ export interface TranscribeResult {
   }>;
 }
 
+export interface AudioInfo {
+  path: string;
+  name: string;
+  extension: string | null;
+  size_bytes: number;
+  duration_sec: number | null;
+  error?: string;
+}
+
 export interface HistoryEntry {
   id: string;
   title: string;
@@ -26,6 +35,9 @@ export interface HistoryEntry {
   task: string | null;
   detected_language: string | null;
   segments?: TranscribeResult["segments"];
+  audio_duration_sec: number | null;
+  audio_size_bytes: number | null;
+  transcribe_duration_ms: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +64,7 @@ export interface PyWebViewApi {
   get_models(): Promise<ModelInfo[]>;
   get_languages(): Promise<string[]>;
   get_ffmpeg_status(): Promise<{ bundled: boolean; path: string | null }>;
+  get_audio_info(path: string): Promise<AudioInfo | { error: string }>;
   pick_audio_file(): Promise<string | null>;
   transcribe(
     path: string,
@@ -70,6 +83,9 @@ export interface PyWebViewApi {
     language?: string | null,
     task?: string | null,
     detected_language?: string | null,
+    audio_duration_sec?: number | null,
+    audio_size_bytes?: number | null,
+    transcribe_duration_ms?: number | null,
   ): Promise<HistoryEntry>;
   update_history(
     id: string,
@@ -80,6 +96,9 @@ export interface PyWebViewApi {
     language?: string | null,
     task?: string | null,
     detected_language?: string | null,
+    audio_duration_sec?: number | null,
+    audio_size_bytes?: number | null,
+    transcribe_duration_ms?: number | null,
   ): Promise<{ ok: boolean; entry?: HistoryEntry; error?: string }>;
   delete_history(id: string): Promise<{ ok: boolean; error?: string }>;
   save_transcript(text: string, default_name?: string): Promise<{

@@ -20,12 +20,21 @@ CREATE TABLE IF NOT EXISTS transcripts (
     task TEXT,
     detected_language TEXT,
     segments_json TEXT,
+    audio_duration_sec REAL,
+    audio_size_bytes INTEGER,
+    transcribe_duration_ms INTEGER,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_transcripts_updated
     ON transcripts(updated_at DESC);
 """
+
+_MIGRATIONS = (
+    ("audio_duration_sec", "REAL"),
+    ("audio_size_bytes", "INTEGER"),
+    ("transcribe_duration_ms", "INTEGER"),
+)
 
 
 def _now_iso() -> str:
@@ -44,9 +53,19 @@ def _connect() -> sqlite3.Connection:
     return conn
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    existing = {
+        row[1] for row in conn.execute("PRAGMA table_info(transcripts)").fetchall()
+    }
+    for column, col_type in _MIGRATIONS:
+        if column not in existing:
+            conn.execute(f"ALTER TABLE transcripts ADD COLUMN {column} {col_type}")
+
+
 def init_db() -> None:
     with _connect() as conn:
         conn.executescript(_SCHEMA)
+        _migrate(conn)
         conn.commit()
 
 
@@ -67,6 +86,9 @@ def _row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
         "task": row["task"],
         "detected_language": row["detected_language"],
         "segments": segments,
+        "audio_duration_sec": row["audio_duration_sec"],
+        "audio_size_bytes": row["audio_size_bytes"],
+        "transcribe_duration_ms": row["transcribe_duration_ms"],
         "created_at": row["created_at"],
         "updated_at": row["updated_at"],
     }
@@ -99,6 +121,9 @@ def create_transcript(
     task: str | None = None,
     detected_language: str | None = None,
     segments: list[dict[str, Any]] | None = None,
+    audio_duration_sec: float | None = None,
+    audio_size_bytes: int | None = None,
+    transcribe_duration_ms: int | None = None,
 ) -> dict[str, Any]:
     transcript_id = str(uuid.uuid4())
     now = _now_iso()
@@ -109,8 +134,9 @@ def create_transcript(
             """
             INSERT INTO transcripts (
                 id, title, text, audio_path, model, language, task,
-                detected_language, segments_json, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                detected_language, segments_json, audio_duration_sec,
+                audio_size_bytes, transcribe_duration_ms, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 transcript_id,
@@ -122,6 +148,9 @@ def create_transcript(
                 task,
                 detected_language,
                 segments_json,
+                audio_duration_sec,
+                audio_size_bytes,
+                transcribe_duration_ms,
                 now,
                 now,
             ),
@@ -145,6 +174,9 @@ def update_transcript(
     detected_language: str | None = None,
     segments: list[dict[str, Any]] | None = None,
     clear_segments: bool = False,
+    audio_duration_sec: float | None = None,
+    audio_size_bytes: int | None = None,
+    transcribe_duration_ms: int | None = None,
 ) -> dict[str, Any] | None:
     existing = get_transcript(transcript_id)
     if existing is None:
@@ -161,6 +193,21 @@ def update_transcript(
             detected_language
             if detected_language is not None
             else existing["detected_language"]
+        ),
+        "audio_duration_sec": (
+            audio_duration_sec
+            if audio_duration_sec is not None
+            else existing["audio_duration_sec"]
+        ),
+        "audio_size_bytes": (
+            audio_size_bytes
+            if audio_size_bytes is not None
+            else existing["audio_size_bytes"]
+        ),
+        "transcribe_duration_ms": (
+            transcribe_duration_ms
+            if transcribe_duration_ms is not None
+            else existing["transcribe_duration_ms"]
         ),
         "updated_at": _now_iso(),
     }
@@ -179,7 +226,9 @@ def update_transcript(
             """
             UPDATE transcripts SET
                 title = ?, text = ?, audio_path = ?, model = ?, language = ?,
-                task = ?, detected_language = ?, segments_json = ?, updated_at = ?
+                task = ?, detected_language = ?, segments_json = ?,
+                audio_duration_sec = ?, audio_size_bytes = ?,
+                transcribe_duration_ms = ?, updated_at = ?
             WHERE id = ?
             """,
             (
@@ -191,6 +240,9 @@ def update_transcript(
                 fields["task"],
                 fields["detected_language"],
                 fields["segments_json"],
+                fields["audio_duration_sec"],
+                fields["audio_size_bytes"],
+                fields["transcribe_duration_ms"],
                 fields["updated_at"],
                 transcript_id,
             ),
